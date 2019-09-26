@@ -3,23 +3,21 @@ import math
 
 width = 1280
 height = 720
-[c_x, c_y] = [width / 2, height / 2]
 
 radius = 300
 square_size = 50
 
 root = Tk()
 
-run  = False
+run = False
 
-# Init, FIRST POINT ADDED, SOME POINT ADDED, LAST POINT ADDED
-INIT = 0 # 'INIT'
-FIRST = 1# 'FIRST POINT ADDED'
-SOME = 2 # 'SOME POINT ADDED'
-LAST = 3 # 'LAST POINT ADDED'
-SECOND = 4 # 'SECOND POINT ADDED'
-SOME_SECOND = 5 # 'SOME POINT IN SECOND POLYGON ADDED'
-END = 6 # 'END'
+INIT = 0        # INIT
+FIRST = 1       # FIRST POINT IN FIRST POLYGON ADDED
+SOME = 2        # SOME POINT IN FIRST POLYGON ADDED
+LAST = 3        # LAST POINT IN FIRST POLYGON ADDED
+SECOND = 4      # FIRST POINT IN SECOND POLYGON ADDED
+SOME_SECOND = 5 # SOME POINT IN SECOND POLYGON ADDED
+END = 6         # END
 
 moving_point = -1
 
@@ -55,12 +53,6 @@ def on_stop():
     run = False
     print('STOP')
 
-def rotate(x, y, cx, cy, phi):
-    x -= cx
-    y -= cy
-
-    return [x * math.cos(phi) + y * math.sin(phi) + cx, -x * math.sin(phi) + y * math.cos(phi) + cy]
-
 class MyPolygon(object):
     def __init__(self, point):
         self.points = point.copy()
@@ -70,7 +62,8 @@ class MyPolygon(object):
         self.child_offset = -1
         self.calculate_center()
         self.calculate_offset()
-
+        self.angle = 0
+        self.perimeter = 0
         self.lines_ids = {}
         self.points_ids = {}
 
@@ -109,7 +102,13 @@ class MyPolygon(object):
         self.current_points[id] = point[0]
         self.current_points[id + self.count] = point[1]
 
-        self.points = self.current_points.copy()
+        x = self.center[0] + (point[0] - self.center[0]) * math.cos(-1 * self.angle) - (
+                point[1] - self.center[1]) * math.sin(-1 * self.angle)
+        y = self.center[1] + (point[0] - self.center[0]) * math.sin(-1 * self.angle) + (
+                point[1] - self.center[1]) * math.cos(-1 * self.angle)
+
+        self.points[id] = x
+        self.points[id + self.count] = y
 
         if self.center_figure != -1:
             canvas.delete(self.center_figure)
@@ -123,10 +122,8 @@ class MyPolygon(object):
             left, right = right_index, id
 
         if str(left) + ' ' + str(right) in self.lines_ids:
-            print('DELETE FROM ' + str(left) + ' TO ' + str(right))
             canvas.delete(self.lines_ids[str(left) + ' ' + str(right)])
 
-            print('DRAW FROM ' + str(left) + ' TO ' + str(right))
             self.lines_ids[str(left) + ' ' + str(right)] = canvas.create_line(self.current_points[left],
                            self.current_points[left + self.count],
                            self.current_points[right],
@@ -140,12 +137,9 @@ class MyPolygon(object):
         else:
             left2, right2 = id, left_index
 
-        print('LOOK LEFT LINE FROM ' + str(left2) + ' TO ' + str(right2))
         if str(left2) + ' ' + str(right2) in self.lines_ids:
-            print('DELETE FROM ' + str(left2) + ' TO ' + str(right2))
             canvas.delete(self.lines_ids[str(left2) + ' ' + str(right2)])
 
-            print('DRAW FROM ' + str(left2) + ' TO ' + str(right2))
             self.lines_ids[str(left2) + ' ' + str(right2)] = canvas.create_line(self.current_points[right2],
                                                                                             self.current_points[right2 + self.count],
                                                                                             self.current_points[left2],
@@ -158,17 +152,21 @@ class MyPolygon(object):
 
         self.calculate_center()
         self.calculate_offset()
+        self.calculate_perimeter()
 
         self.center_figure = canvas.create_oval(self.center[0] - 3, self.center[1] - 3,
                                                 self.center[0] + 3, self.center[1] + 3, fill="#FF0000")
 
     def last_vertex(self):
+        self.calculate_perimeter()
+
         self.lines_ids[str(0) + ' ' + str(self.count - 1)] = canvas.create_line(self.points[0],
                            self.points[self.count],
                            self.points[self.count - 1],
                            self.points[self.count * 2 - 1])
 
     def rotation(self, angle):
+        self.angle = angle
         for i in range(self.count):
             self.current_points[i] = self.center[0] + (self.points[i] - self.center[0]) * math.cos(angle) - (
                         self.points[i + self.count] - self.center[1]) * math.sin(angle)
@@ -202,6 +200,17 @@ class MyPolygon(object):
         for i in range(self.count):
             self.offset[i] = self.points[i] - self.center[0]
             self.offset[i + self.count] = self.points[i + self.count] - self.center[1]
+
+    def calculate_perimeter(self):
+        self.perimeter = 0
+
+        for i in range(self.count):
+            right_index = (i + 1) % self.count
+
+            dx = self.points[i] - self.points[right_index]
+            dy = self.points[i + self.count] - self.points[right_index + self.count]
+
+            self.perimeter += math.sqrt(dx ** 2 + dy ** 2)
 
     def draw(self):
         self.center_figure = canvas.create_oval(self.center[0] - 3, self.center[1] - 3,
@@ -237,8 +246,11 @@ class MyPolygon(object):
             right_index = (self.child_offset[0] + 1) % self.count
             left_index = self.child_offset[0]
 
-            x = self.current_points[left_index] + (self.current_points[right_index] - self.current_points[left_index]) * self.child_offset[1] / 100
-            y = self.current_points[left_index + self.count] + (self.current_points[right_index + self.count] - self.current_points[left_index + self.count]) * self.child_offset[1] / 100
+            dx = self.current_points[right_index] - self.current_points[left_index]
+            dy = self.current_points[right_index + self.count] - self.current_points[left_index + self.count]
+
+            x = self.current_points[left_index] + dx * self.child_offset[1] / math.sqrt(dx ** 2 + dy ** 2)
+            y = self.current_points[left_index + self.count] + dy * self.child_offset[1] / math.sqrt(dx ** 2 + dy ** 2)
 
             return [x, y]
 
@@ -249,10 +261,26 @@ class MyPolygon(object):
         if self.child_offset != -1:
             right_index = (self.child_offset[0] + 1) % self.count
 
-            if self.child_offset[1] + 0.3 < 100:
-                self.child_offset[1] += 0.3
+            dx = self.current_points[self.child_offset[0]] - self.current_points[right_index]
+            dy = self.current_points[self.child_offset[0] + self.count] - self.current_points[right_index + self.count]
+
+            if math.sqrt(dx ** 2 + dy ** 2) < (self.child_offset[1] + 0.001 * self.perimeter):
+                movement = 0.001 * self.perimeter + self.child_offset[1] - math.sqrt(dx ** 2 + dy ** 2)
+                self.child_offset = [right_index, movement]
+                self.calculate_child_offset()
             else:
-                self.child_offset = [right_index, 0]
+                self.child_offset[1] += 0.001 * self.perimeter
+
+    def calculate_child_offset(self):
+        right_index = (self.child_offset[0] + 1) % self.count
+
+        dx = self.current_points[self.child_offset[0]] - self.current_points[right_index]
+        dy = self.current_points[self.child_offset[0] + self.count] - self.current_points[right_index + self.count]
+
+        if self.child_offset[1] > math.sqrt(dx ** 2 + dy ** 2):
+            movement = self.child_offset[1] - math.sqrt(dx ** 2 + dy ** 2)
+            self.child_offset = [right_index, movement]
+            self.calculate_child_offset()
 
 def on_click_canvas(point):
     global state, polygons, run, moving_point
@@ -300,8 +328,6 @@ def on_click_canvas(point):
                         polygons[1].add_vertex(point)
 
 def callback(event):
-    print("clicked at", event.x, event.y)
-    print(get_figure([event.x, event.y]))
     on_click_canvas([event.x, event.y])
 
 canvas = Canvas(root, width=width, height=height, bg='white')
@@ -330,8 +356,6 @@ def draw():
         time += math.pi / 180
     root.after(10, draw)
 
-
 draw()
-
 
 root.mainloop()
