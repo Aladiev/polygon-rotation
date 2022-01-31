@@ -19,10 +19,8 @@ class App(Frame):
 
         self.canvas.bind("<ButtonPress-2>", self.finish_poly)
         self.canvas.bind("<Button-1>", self.create_point)
-        start_button = Button(root, text="Play", command=self.play_simulation)
-        stop_button = Button(root, text="Stop", command=self.stop_simulation)
-        start_button.pack()
-        stop_button.pack()
+        play_or_stop_simulation = Button(root, text="Play/Stop", command=self.play_or_stop_simulation)
+        play_or_stop_simulation.pack()
 
         self.time = 0
         self.draw()
@@ -40,11 +38,8 @@ class App(Frame):
 
         root.after(10, self.draw)
 
-    def play_simulation(self):
-        self.run = True
-
-    def stop_simulation(self):
-        self.run = False
+    def play_or_stop_simulation(self):
+        self.run = not self.run
 
     def finish_poly(self, _):
         if len(self.points) > 2:
