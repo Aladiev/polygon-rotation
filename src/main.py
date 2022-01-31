@@ -2,6 +2,7 @@ from tkinter import *
 from polygon import *
 import random
 
+
 class App(Frame):
     def __init__(self, root):
         self.run = False
@@ -47,7 +48,7 @@ class App(Frame):
 
     def finish_poly(self, _):
         if len(self.points) > 2:
-            self.polygons.append(MyPolygon(self.points, self.canvas))
+            self.polygons.append(Polygon(self.points, self.canvas))
 
             self.generate_color()
             self.points = []
